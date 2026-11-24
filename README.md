@@ -1,6 +1,6 @@
 <div align="center">
 
-# AutoUpdateGeyser v7.1.0
+# AutoUpdateGeyser v7.2.0
 
 Keep Geyser and Floodgate up-to-date - automatically and safely.
 
@@ -101,8 +101,8 @@ updates:
   interval: 60          # minutes
   bootTime: 5           # seconds after startup before first check
   autoRestart: false
-  restartDelay: 60      # seconds
-  restartMessage: "Server is restarting shortly!"
+  restartDelay: [120, 60, 30, 10, 5, 4, 3, 2, 1] # countdown seconds, or 0 for immediate restart
+  restartMessage: "&e[AutoUpdateGeyser] Server will restart in {seconds} seconds."
 ```
 
 Velocity (`config.toml`):
@@ -114,8 +114,8 @@ floodgate = true
 interval = 60          # minutes
 bootTime = 5           # seconds after startup before first check
 autoRestart = false
-restartDelay = 60      # seconds
-restartMessage = "Server is restarting shortly!"
+restartDelay = [120, 60, 30, 10, 5, 4, 3, 2, 1] # countdown seconds, or 0 for immediate restart
+restartMessage = "&e[AutoUpdateGeyser] Server will restart in {seconds} seconds."
 ```
 
 ## Commands & Permissions

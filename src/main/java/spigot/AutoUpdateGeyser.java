@@ -4,6 +4,7 @@ import common.BuildYml;
 import common.Floodgate;
 import common.Geyser;
 import common.RestartGate;
+import common.RestartScheduleConfig;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -14,6 +15,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
+import java.util.Arrays;
 
 public final class AutoUpdateGeyser extends JavaPlugin {
 
@@ -94,11 +96,28 @@ public final class AutoUpdateGeyser extends JavaPlugin {
 
     private void scheduleRestartIfAutoRestart() {
         if (config.getBoolean("updates.autoRestart") && restartGate.markScheduled()) {
-            getServer().broadcastMessage(ChatColor.translateAlternateColorCodes('&', config.getString("updates.restartMessage")));
-            long delaySeconds = config.getInt("updates.restartDelay");
-            SchedulerCompat.scheduleConsoleRestart(this, () ->
+            RestartScheduleConfig restartConfig = RestartScheduleConfig.parse(
+                    config.get("updates.restartDelay"),
+                    config.getString("updates.restartMessage")
+            );
+
+            if (restartConfig.isImmediate()) {
+                SchedulerCompat.runMain(this, () -> {
+                    RestartScheduleConfig.BroadcastStep step = restartConfig.getBroadcastSteps().get(0);
+                    getServer().broadcastMessage(ChatColor.translateAlternateColorCodes('&', step.getMessage()));
+                    getServer().dispatchCommand(getServer().getConsoleSender(), "restart");
+                });
+                return;
+            }
+
+            for (RestartScheduleConfig.BroadcastStep step : restartConfig.getBroadcastSteps()) {
+                String message = ChatColor.translateAlternateColorCodes('&', step.getMessage());
+                SchedulerCompat.scheduleDelayedTask(this, () -> getServer().broadcastMessage(message), step.getDelaySeconds());
+            }
+
+            SchedulerCompat.scheduleDelayedTask(this, () ->
                             getServer().dispatchCommand(getServer().getConsoleSender(), "restart"),
-                    delaySeconds
+                    restartConfig.getMaxDelaySeconds()
             );
         }
     }
@@ -111,8 +130,8 @@ public final class AutoUpdateGeyser extends JavaPlugin {
         config.addDefault("updates.interval", 60);
         config.addDefault("updates.bootTime", 5);
         config.addDefault("updates.autoRestart", false);
-        config.addDefault("updates.restartDelay", 60);
-        config.addDefault("updates.restartMessage", "Server is restarting shortly!");
+        config.addDefault("updates.restartDelay", Arrays.asList(120, 60, 30, 10, 5, 4, 3, 2, 1));
+        config.addDefault("updates.restartMessage", "&e[AutoUpdateGeyser] Server will restart in {seconds} seconds.");
         config.options().copyDefaults(true);
         saveConfig();
     }

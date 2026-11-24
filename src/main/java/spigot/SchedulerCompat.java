@@ -59,6 +59,14 @@ final class SchedulerCompat {
         Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, task, initialDelayTicks, periodTicks);
     }
 
+    static void scheduleDelayedTask(Plugin plugin, Runnable task, long delaySeconds) {
+        if (delaySeconds <= 0) {
+            runMain(plugin, task);
+            return;
+        }
+        scheduleConsoleRestart(plugin, task, delaySeconds);
+    }
+
     static void scheduleConsoleRestart(Plugin plugin, Runnable task, long delaySeconds) {
         scheduleConsoleRestart(
                 plugin,

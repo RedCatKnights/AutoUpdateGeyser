@@ -4,6 +4,7 @@ import common.BuildYml;
 import common.Floodgate;
 import common.Geyser;
 import common.RestartGate;
+import common.RestartScheduleConfig;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.ProxyServer;
@@ -89,10 +90,32 @@ public final class AutoUpdateGeyser extends Plugin {
 
     private void scheduleRestartIfAutoRestart() {
         if (config.getBoolean("updates.autoRestart") && restartGate.markScheduled()) {
-            getProxy().broadcast(ChatColor.translateAlternateColorCodes('&', config.getString("updates.restartMessage")));
+            RestartScheduleConfig restartConfig = RestartScheduleConfig.parse(
+                    config.get("updates.restartDelay"),
+                    config.getString("updates.restartMessage")
+            );
+
+            if (restartConfig.isImmediate()) {
+                RestartScheduleConfig.BroadcastStep step = restartConfig.getBroadcastSteps().get(0);
+                getProxy().broadcast(ChatColor.translateAlternateColorCodes('&', step.getMessage()));
+                ProxyServer.getInstance().getPluginManager().dispatchCommand(ProxyServer.getInstance().getConsole(), "end");
+                return;
+            }
+
+            for (RestartScheduleConfig.BroadcastStep step : restartConfig.getBroadcastSteps()) {
+                String message = ChatColor.translateAlternateColorCodes('&', step.getMessage());
+                if (step.getDelaySeconds() <= 0) {
+                    getProxy().broadcast(message);
+                } else {
+                    ProxyServer.getInstance().getScheduler().schedule(this, () -> {
+                        getProxy().broadcast(message);
+                    }, step.getDelaySeconds(), TimeUnit.SECONDS);
+                }
+            }
+
             ProxyServer.getInstance().getScheduler().schedule(this, () -> {
                 ProxyServer.getInstance().getPluginManager().dispatchCommand(ProxyServer.getInstance().getConsole(), "end");
-            }, config.getInt("updates.restartDelay"), TimeUnit.SECONDS);
+            }, restartConfig.getMaxDelaySeconds(), TimeUnit.SECONDS);
         }
     }
 

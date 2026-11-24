@@ -16,8 +16,10 @@ import common.BuildYml;
 import common.Floodgate;
 import common.Geyser;
 import common.RestartGate;
+import common.RestartScheduleConfig;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,7 +30,7 @@ import java.time.Duration;
 import java.util.logging.Logger;
 
 
-@Plugin(id = "autoupdategeyser", name = "AutoUpdateGeyser", version = "7.1.0", url = "https://www.spigotmc.org/resources/autoupdategeyser.109632/", authors = "NewAmazingPVP")
+@Plugin(id = "autoupdategeyser", name = "AutoUpdateGeyser", version = "7.2.0", url = "https://www.spigotmc.org/resources/autoupdategeyser.109632/", authors = "NewAmazingPVP")
 public final class AutoUpdateGeyser {
 
     private Geyser m_geyser;
@@ -112,10 +114,37 @@ public final class AutoUpdateGeyser {
 
     private void scheduleRestartIfAutoRestart() {
         if (config.getBoolean("updates.autoRestart") && restartGate.markScheduled()) {
-            proxy.sendMessage(Component.text(config.getString("updates.restartMessage")));
+            Object rawDelay = config.getList("updates.restartDelay");
+            if (rawDelay == null) {
+                rawDelay = config.getLong("updates.restartDelay");
+            }
+            RestartScheduleConfig restartConfig = RestartScheduleConfig.parse(
+                    rawDelay,
+                    config.getString("updates.restartMessage")
+            );
+
+            if (restartConfig.isImmediate()) {
+                RestartScheduleConfig.BroadcastStep step = restartConfig.getBroadcastSteps().get(0);
+                Component component = LegacyComponentSerializer.legacyAmpersand().deserialize(step.getMessage());
+                proxy.sendMessage(component);
+                proxy.getCommandManager().executeAsync(proxy.getConsoleCommandSource(), "shutdown");
+                return;
+            }
+
+            for (RestartScheduleConfig.BroadcastStep step : restartConfig.getBroadcastSteps()) {
+                Component component = LegacyComponentSerializer.legacyAmpersand().deserialize(step.getMessage());
+                if (step.getDelaySeconds() <= 0) {
+                    proxy.sendMessage(component);
+                } else {
+                    proxy.getScheduler().buildTask(this, () -> {
+                        proxy.sendMessage(component);
+                    }).delay(Duration.ofSeconds(step.getDelaySeconds())).schedule();
+                }
+            }
+
             proxy.getScheduler().buildTask(this, () -> {
                 proxy.getCommandManager().executeAsync(proxy.getConsoleCommandSource(), "shutdown");
-            }).delay(Duration.ofSeconds(config.getLong("updates.restartDelay"))).schedule();
+            }).delay(Duration.ofSeconds(restartConfig.getMaxDelaySeconds())).schedule();
         }
     }
 
