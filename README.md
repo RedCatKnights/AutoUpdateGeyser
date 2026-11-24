@@ -132,7 +132,8 @@ restartMessage = "&e[AutoUpdateGeyser] Server will restart in {seconds} seconds.
 
 * The last applied build is tracked in `builds.yml` inside the plugin data folder.
 
-* If `autoRestart` is enabled, the plugin broadcasts `restartMessage` and restarts after `restartDelay` seconds.
+* If `autoRestart` is enabled, the plugin broadcasts `restartMessage` at each configured `restartDelay` countdown step and executes the restart/shutdown command once the countdown finishes.
+* for an immediate restart/shutdown, set it to `[0]` to broadcast once and immediately execute the restart/shutdown command.
 
     * Spigot/Paper/Folia: runs `restart`
 
